@@ -1,0 +1,120 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage{kotex}
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{booktabs} 
+\usepackage[margin=23mm]{geometry} 
+
+\begin{document}
+
+\title{\large \textbf{고차원 다중공선성 및 비정규 오차항 환경 하에서의 $L_1$-벌점화 분위수 회귀}}
+\author{\small 수치 최적화 및 몬테카를로 시뮬레이션}
+\date{}
+\maketitle
+
+\section{초록 (Abstract)}
+본 연구는 오차항의 정규성 가정이 배제된 고차원 다중공선성 환경($P \ge N$) 하에서 전통적인 $L_2$ 규제 추정량(Lasso)의 수리적 취약성을 실증하고, 대안적 방법론인 $L_1$-벌점화 분위수 회귀(Sparse Quantile Regression) 모형의 수치적 거동을 고찰한다. 목적함수의 비미분성을 처리하기 위해 손실 함수와 벌점항을 분리하여 연산하는 근접 경사하강법(Proximal Gradient Descent) 알고리즘을 유도하여 적용하였다. 가우시안, 코시, 지수 오차항을 가정한 100회 복제 몬테카를로 스트레스 테스트 결과, 제안된 근접 솔버 기반 모형은 차원과 표본 크기가 일치하는 임계 영역($P=N$) 및 고차원 설정($P>N$) 하에서도 오차 분산의 영향을 방어하며 우수한 강건 추정 성능과 희소성(Sparsity) 복원력을 동시에 달성함을 확인하였다.
+
+\section{몬테카를로 시뮬레이션(Monte Carlo) 및 실험 설계}
+본 연구는 제안 모형의 점근적 통계 특성과 추정치의 강건성을 검증하기 위해, 총 100회($B=100$)의 독립적인 복제 시행을 기반으로 하는 몬테카를로 시뮬레이션 프레임워크를 설계하였다. 구체적인 데이터 생성 과정 및 대조군 모형의 실험 설정은 다음과 같다.
+
+\begin{itemize}
+    \item \textbf{데이터 생성 과정}: $y = X\beta^* + \epsilon$, 참 계수 벡터는 불연속적 희소 구조인 $\beta^* = [3.0, 1.5, 0, 0, -2.0, 0, \dots, 0]^T \in \mathbb{R}^P$로 설정함. 특히 참 계수를 비연속적인 인덱스([0, 1, 4])에 배치함으로써, 토플리츠 구조상 중간에 위치한 가짜 변수가 진짜 신호와 높은 상관관계를 갖도록 유도하여 벌점화 장치의 오탐 방어력을 검증함.
+    \item \textbf{다중공선성 환경}: $X \sim N(0, \Sigma)$ 구조를 따르며, 변수 간 강력한 상관관계를 모사하기 위해 토플리츠 공분산 행렬 구조($\Sigma_{jk} = \rho^{|j-k|}, \rho=0.8$)를 채택함.
+    \item \textbf{3수준 실험 격자}: 표본 크기 $N=100$ 고정 하에서 차원 $P \in \{20, 100, 200\}$의 3수준 확장을 전개하여 표본 크기 대비 저차원($N>P$), 차원과 표본 크기가 일치하는 지점($P=N$, 자유도 0), 고차원($P>N$) 환경에서의 수치적 변화를 추적함.
+    \item \textbf{제안 모형의 목적함수 정의}: 본 연구가 독립변수의 희소성 복원과 이상치 거동에 대한 강건성을 동시에 달성하기 위해 최소화하는 $L_1$-벌점화 분위수 회귀 목적함수 $Q(\beta)$는 다음과 같이 정의됨.
+    $$Q(\beta) = \frac{1}{n}\sum_{i=1}^{n}\rho_{\tau}(y_{i}-x_{i}^{T}\beta) + \lambda \sum_{j=1}^{P}|\beta_{j}|$$
+    여기서 $\rho_\tau(u) = u(\tau - I(u<0))$는 체크 손실 함수이며, 본 실험에서는 중앙값 회귀($\tau=0.5$)를 채택함. 규제 강도는 $\lambda = 0.5 \times \sqrt{\frac{\log P}{N}}$로 동적 스케일링함\cite{belloni2011}.
+    \item \textbf{벤치마크 모형 설정}: 제안 모형의 상대적 우월성을 입증하기 위해, 고전적 벌점화 추정량인 Lasso\cite{tibshirani1996} 및 규제가 없는 전통적 분위수 회귀 모형\cite{koenker1978}을 대조군으로 결합함. 모든 평가는 100회 복제 시행의 표본평균으로 수렴시킴.\end{itemize}
+
+\section{최적화 알고리즘: 근접 경사하강법 (Proximal Gradient Method)}
+제2단원에서 정립한 목적함수 $Q(\beta)$는 체크 손실 함수의 꺾임점과 $L_1$ 페널티의 절대값 구조로 인해 원점에서 미분이 불가능하다. 최적점 부근에서 수치적 잔진동을 유발하여 변수 선택 성능을 저하시키는 고전적 서브그래디언트 방식의 한계를 극복하기 위해, 본 연구에서는 손실 함수의 서브그래디언트 전진 스텝과 벌점항의 소프트 임계값 연산자($\mathcal{S}_{\gamma\lambda}$)를 대수적으로 분리하여 연산하는 근접 매핑 프레임워크\cite{parikh2014}를 도입하였다.
+$$\beta^{(t+1)} = \mathcal{S}_{\gamma_t \lambda} \left( \beta^{(t)} - \gamma_t \cdot \left[ -\frac{1}{n}X^T \psi_\tau(y - X\beta^{(t)}) \right] \right)$$
+여기서 $\psi_\tau(u) = I(u<0) - \tau$이며, 매 루프마다 잔차의 부호를 판별한다. 구현된 솔버는 비미분성 제약 하에서도 안정적인 최적화 경로를 사수하도록 설계되었다.\cite{belloni2011}
+
+\section{시뮬레이션 결과 및 수치 해석}
+100회 복제 시뮬레이션의 지표별 표본평균 성적표는 다음과 같다. 모든 모델은 100\% 수렴 완수되었다.
+
+\begin{center}
+\small
+\begin{tabular}{cclcccc}
+\toprule
+\textbf{차원 ($P$)} & \textbf{오차항 분포} & \textbf{벤치마크 모형} & \textbf{Parameter MSE} & \textbf{TPR} & \textbf{FDR} & \textbf{Time (sec)} \\
+\midrule
+\multirow{9}{*}{\textbf{P = 20}} 
+& \multirow{3}{*}{Cauchy} & 1. Custom\_Proximal\_QR & \textbf{0.0932} & 0.9767 & \textbf{0.2107} & 0.0579 \\
+& & 2. Scikit\_Learn\_Lasso & 100.2225 & 0.9467 & 0.8245 & 0.0009 \\
+& & 3. Unpenalized\_QuantReg & 0.2722 & 1.0000 & 0.8479 & 0.0727 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Exponential} & 1. Custom\_Proximal\_QR & 0.0283 & 1.0000 & \textbf{0.2519} & 0.0577 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0121} & 1.0000 & 0.4400 & 0.0008 \\
+& & 3. Unpenalized\_QuantReg & 0.0648 & 1.0000 & 0.8458 & 0.0744 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Gaussian} & 1. Custom\_Proximal\_QR & 0.0308 & 1.0000 & \textbf{0.2162} & 0.0575 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0104} & 1.0000 & 0.3927 & 0.0008 \\
+& & 3. Unpenalized\_QuantReg & 0.0892 & 1.0000 & 0.8466 & 0.0738 \\
+\midrule
+\multirow{9}{*}{\textbf{P = 100}} 
+& \multirow{3}{*}{Cauchy} & 1. Custom\_Proximal\_QR & \textbf{0.0343} & 0.8767 & \textbf{0.3702} & 0.0748 \\
+& & 2. Scikit\_Learn\_Lasso & 37726.0687 & 0.8667 & 0.9613 & 0.0050 \\
+& & 3. Unpenalized\_QuantReg & 659788.7977 & 1.0000 & 0.9700 & 0.1008 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Exponential} & 1. Custom\_Proximal\_QR & 0.0081 & 1.0000 & \textbf{0.3161} & 0.0753 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0028} & 1.0000 & 0.7552 & 0.0011 \\
+& & 3. Unpenalized\_QuantReg & 58.9954 & 0.9933 & 0.9701 & 0.0260 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Gaussian} & 1. Custom\_Proximal\_QR & 0.0104 & 1.0000 & \textbf{0.2888} & 0.0750 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0024} & 1.0000 & 0.7686 & 0.0011 \\
+& & 3. Unpenalized\_QuantReg & 450.9131 & 1.0000 & 0.9699 & 0.0260 \\
+\midrule
+\multirow{9}{*}{\textbf{P = 200}} 
+& \multirow{3}{*}{Cauchy} & 1. Custom\_Proximal\_QR & \textbf{0.0187} & \textbf{0.8633} & \textbf{0.4654} & 0.0739 \\
+& & 2. Scikit\_Learn\_Lasso & 71.9848 & 0.6400 & 0.9770 & 0.0090 \\
+& & 3. Unpenalized\_QuantReg & 57.8075 & 1.0000 & 0.9849 & 0.0551 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Exponential} & 1. Custom\_Proximal\_QR & 0.0052 & 1.0000 & \textbf{0.3536} & 0.0738 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0019} & 1.0000 & 0.8519 & 0.0012 \\
+& & 3. Unpenalized\_QuantReg & 0.0405 & 1.0000 & 0.9843 & 0.0552 \\
+\cmidrule{2-7}
+& \multirow{3}{*}{Gaussian} & 1. Custom\_Proximal\_QR & 0.0067 & 0.9967 & \textbf{0.3791} & 0.0738 \\
+& & 2. Scikit\_Learn\_Lasso & \textbf{0.0018} & 1.0000 & 0.8554 & 0.0012 \\
+& & 3. Unpenalized\_QuantReg & 0.0424 & 1.0000 & 0.9843 & 0.0559 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{오차항 분포별 수치적 강건성(Robustness) 분석}
+오차항의 분산이 정의되지 않는 무한 분산 환경 하에서, 고전적 $L_2$ 손실 기반의 Lasso는 이상치의 영향으로 인해 추정 오차(MSE)가 크게 발산(최대 37,726)하는 한계를 보였다. 반면 제안된 분위수 회귀 기반 모형은 절대오차 형태의 체크 손실 함수를 활용하여 이상치의 왜곡 효과를 안정적으로 제어함으로써, 모든 차원과 시나리오에서 고른 MSE 수치를 유지하며 우수한 강건 추정 성능을 입증하였다.
+
+\subsection{차원 확장에 따른 희소성(Sparsity) 제어 고찰}
+자유도가 부재하는 임계 지점($P=N=100$)에서 정규화 제약이 없는 일반 분위수 회귀는 행렬의 특이성 문제로 인해 추정 오차가 급격히 증가하는 현상을 보였다. 또한 고차원($P=200$) 환경에서 기성 모형들은 다중공선성과 차원 확장의 영향으로 인해 불필요한 변수들을 효과적으로 제거하지 못해 FDR이 85\%~98\% 수준으로 상승하며 과적합 경향을 나타냈다. 반면 소프트 임계값 연산자를 적용한 모형은 미세한 오차 추정치들을 0으로 수축시켰다. 이를 통해 가우시안 시나리오 기준 참 신호를 안정적으로 복원(TPR=0.9967)함과 동시에 FDR을 37.91\% 수준으로 통제하여 변수 선택의 정확성을 유의미하게 개선하였다.
+
+\section{결론 및 수치 해석 요약}
+본 실험을 통해 고차원 및 비정규 오차항 환경 하에서 손실 함수의 선택과 정규화 제약 조건이 모형의 수렴성과 추정 정확도에 미치는 복합적인 통계적 특성을 실증하였다. 특히 $L_1$ 벌점항을 처리함에 있어 단순 서브그래디언트 결합 대신 근접 연산자 분할 기법을 도입함으로써 비미분 목적함수의 최적화 경로를 안정적으로 제어할 수 있음을 확인하였다. 구현된 알고리즘은 오차항의 이상치 거동에 대한 강건성과 고차원 환경에서의 변수 선택 능력을 균형 있게 충족시켰다.
+
+\begin{thebibliography}{9}
+
+\bibitem{belloni2011}
+Belloni, A., \& Chernozhukov, V. (2011).
+$\ell_1$-penalized quantile regression in high-dimensional sparse models.
+
+\bibitem{tibshirani1996}
+Tibshirani, R. (1996). 
+Regression shrinkage and selection via the lasso. 
+\textit{Journal of the Royal Statistical Society Series B: Statistical Methodology, 58(1), 267-288.}
+
+\bibitem{koenker1978}
+Koenker, R., \& Bassett, G. (1978). 
+Regression Quantiles. 
+\textit{Econometrica, 46(1), 33–50.}
+
+\bibitem{parikh2014}
+Parikh, N., \& Boyd, S. (2014).
+Proximal algorithms.
+\textit{Foundations and Trends in Optimization}, 1(3), 127-239.
+
+\end{thebibliography}
+
+\end{document}

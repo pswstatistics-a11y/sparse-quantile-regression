@@ -1,0 +1,24 @@
+# R 생성 파일
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Python 빌드 파일
+__pycache__/
+*.pyc
+
+# latex 중요하지 않은이외 파일
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.gz
+
+# 대용량 데이터셋 
+*.csv
+*.zip
+!results/*.csv 
+
+# results 폴더의 결과 CSV만 예외적으로 허용
