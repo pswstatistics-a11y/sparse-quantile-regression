@@ -149,7 +149,7 @@ final_report = (
 import os
 
 # 1. 결과물을 저장할 폴더(outputs) 자동 생성
-output_dir = "outputs"
+output_dir = "src/outputs"
 os.makedirs(output_dir, exist_ok=True)
 
 # 2. 판다스 데이터프레임 파일 내보내기 (기본 백업)

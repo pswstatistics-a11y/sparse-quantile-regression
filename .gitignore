@@ -19,6 +19,6 @@ __pycache__/
 # 대용량 데이터셋 
 *.csv
 *.zip
-!results/*.csv 
+!outputs/*.csv 
 
 # results 폴더의 결과 CSV만 예외적으로 허용
